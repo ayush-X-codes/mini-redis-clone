@@ -29,7 +29,7 @@ const server = net.createServer((c) => {
   function type(command) {
     const commandName = command[0];
     console.log("command name is: ", commandName);
-    const method = new HashTable()
+    const method = new HashTable();
 
     switch (commandName) {
       case "SET":
