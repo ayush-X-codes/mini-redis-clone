@@ -26,6 +26,8 @@ function parseArray(position, chunk) {
     const value = readNextBytes(position, chunk);
     element.push(value);
   }
+ 
+  console.log("elements is: ", element)
   return element;
 }
 
