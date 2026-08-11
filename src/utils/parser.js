@@ -11,12 +11,9 @@ function readNextBytes(position, chunk) {
 }
 
 function parseArray(position, chunk) {
-  console.log("Parse array runs...");
   position.numberOfBytes++;
-
   const digit = Buffer.from([chunk[position.numberOfBytes]]).toString("utf-8");
   const num = parseInt(digit);
-
   const element = [];
 
   position.numberOfBytes += 2;
@@ -26,13 +23,11 @@ function parseArray(position, chunk) {
     const value = readNextBytes(position, chunk);
     element.push(value);
   }
- 
-  console.log("elements is: ", element)
+
   return element;
 }
 
 function bulkStringParser(position, chunk) {
-  console.log("bulk string parser runs...");
   position.numberOfBytes++;
 
   let num;

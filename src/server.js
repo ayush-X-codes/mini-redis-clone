@@ -1,37 +1,41 @@
 import net from "net";
 import { bulkStringParser, parseArray } from "./utils/parser.js";
-import HashTable, { expire } from "./utils/commands.js";
+import HashTable, {
+  expireDictionery,
+  passiveExpiration,
+} from "./utils/commands.js";
+import { expire, serverCron } from "./utils/commands.js";
+import EventEmitter from "events";
 
-const method = new HashTable();
+const timeEmitter = new EventEmitter();
+const method = new HashTable(10);
 
 const server = net.createServer((c) => {
   console.log("client connected");
 
   const buf = Buffer.alloc(10);
-  console.log(buf);
 
-  let totalBytesRead = { numberOfBytes: 0 };
   let count = 0;
 
   c.on("data", (chunk) => {
-    // 'chunk' is a Buffer containing raw bytes (Uint8Array)
-    for (const byte of chunk) {
-      if (byte === 42) {
-        console.log("byte is: ", byte);
-        const command = parseArray(totalBytesRead, chunk);
-        console.log("command is: ", command);
+    let position = { numberOfBytes: 0 };
+
+    try {
+      while (position.numberOfBytes < chunk.length) {
+        const command = parseArray(position, chunk);
         type(command);
-
-        console.log("total bytes reads at arrayParser: ", totalBytesRead);
       }
-
-      console.log(`Byte #${count++}: ${byte} (0x${byte.toString(16)})`);
+    } catch (error) {
+      console.error(
+        "Failed to parse command, closing this connection",
+        error.message,
+      );
+      c.end();
     }
   });
 
   function type(command) {
     const commandName = command[0];
-    console.log("command name is: ", commandName);
 
     switch (commandName) {
       case "SET":
@@ -43,7 +47,7 @@ const server = net.createServer((c) => {
 
       case "GET":
         const keyGetCommand = command[1];
-        console.log("get key is: ", keyGetCommand);
+        passiveExpiration(keyGetCommand, expireDictionery, method);
         const getValue = method.get(keyGetCommand);
         if (getValue === null || getValue === undefined) {
           c.write(`$-1\r\n`);
@@ -56,8 +60,8 @@ const server = net.createServer((c) => {
       case "EXPIRE":
         const keyExpire = command[1];
         const valueExpire = command[2];
-        const valueStrToNum = Number(valueExpire); 
-        expire(valueExpire, valueStrToNum);
+        const valueStrToNum = Number(valueExpire);
+        expire(keyExpire, valueStrToNum);
         break;
       case "TTL":
         ttlCommand();
@@ -70,13 +74,16 @@ const server = net.createServer((c) => {
   });
 });
 
+const currentMonotonicTime = performance.now();
 
 const hz = 10;
 const delay = 1000 / hz;
+const scheduledTime = currentMonotonicTime + delay;
 
-setInterval(() => {
-  serverCron()
-}, delay);
+// setInterval(() => {
+//   console.log("schdeuler runs...")
+//   serverCron(expireDictionery.buckets, method.buckets)
+// }, scheduledTime);
 
 server.on("error", (err) => {
   throw err;
@@ -85,3 +92,5 @@ server.on("error", (err) => {
 server.listen(8124, () => {
   console.log("server bound.");
 });
+
+export default method;

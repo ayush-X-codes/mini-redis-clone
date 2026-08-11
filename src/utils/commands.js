@@ -1,3 +1,5 @@
+import method from "../server.js";
+
 export default class HashTable {
   constructor(max = 1000) {
     // maximun numbers of bucket in the hash table
@@ -26,25 +28,19 @@ export default class HashTable {
 
   // given a key, return the index after hashing
   getIndex = (key) => {
-    console.log("getIndex key is: ", key)
     if (typeof key !== "string") {
       throw new Error("Key must be a string!");
     }
     const index = this.hashFunction(key);
-    console.log("index of hash is: ", index);
     return index;
   };
 
   // given a key, return the bucket
   getBucket = (key) => {
     const index = this.getIndex(key);
-    console.log("index is: ", index)
     const bucketValue = this.buckets[index];
-    console.log("the bucket is: ", bucketValue);
-    return bucketValue
+    return bucketValue;
   };
-
-
 
   set = (key, value) => {
     const index = this.getIndex(key);
@@ -52,7 +48,6 @@ export default class HashTable {
     if (!this.getBucket(key)) this.buckets[index] = [];
 
     const bucket = this.getBucket(key);
-
     let overWritten = false;
 
     for (let i = 0; i < bucket.length; i++) {
@@ -66,16 +61,13 @@ export default class HashTable {
 
     if (!overWritten) {
       bucket.push([key, value]);
-      console.log("bucket value: ", bucket);
+
       this.size++;
     }
   };
 
-
-
   get = (key) => {
     const bucket = this.getBucket(key);
-    console.log("bucket is: ", bucket)
 
     // if there is no bucket return undefine
     if (!bucket) return;
@@ -83,28 +75,100 @@ export default class HashTable {
     for (let i = 0; i < bucket.length; i++) {
       if (bucket[i][0] === key) return bucket[i][1];
     }
-  }
+  };
+
+  remove = (key) => {
+    if (!this.getBucket(key)) return;
+
+    let bucket = this.getBucket(key);
+
+    for (let i = 0; i < bucket.length; i++) {
+      let node = bucket[i];
+
+      if (node[0] === key) {
+        bucket.splice(i, 1);
+      }
+
+      if (bucket.length < 1) bucket = undefined;
+      this.size--;
+
+      return node[1];
+    }
+  };
 }
 
+const expireDictionery = new HashTable(10);
 
-const expireDictionery = new HashTable();
 function expire(key, timeInSec) {
   if (!key || !timeInSec) return;
 
   const currentTime = Date.now();
-  console.log("current time is: ", currentTime);
-
   const durationMs = timeInSec * 1000;
   const expireAt = currentTime + durationMs;
-  console.log("expire at is: ", expireAt);
 
   expireDictionery.set(key, expireAt);
-  console.log("expire dictionery is: ", expireDictionery)
 }
 
+class HashTableIterator {
+  constructor(table) {
+    this.table = table;
+    this.bucketIndex = 0;
+    this.nodeIndex = 0;
+  }
 
+  next() {
+    while (this.bucketIndex < this.table.length) {
+      const bucket = this.table[this.bucketIndex];
 
+      if (bucket && this.nodeIndex < bucket.length) {
+        const entery = bucket[this.nodeIndex];
+        this.nodeIndex++;
+        return { value: entery, done: false };
+      }
 
+      this.bucketIndex++;
+      this.nodeIndex = 0;
+    }
 
+    return { value: undefined, done: true };
+  }
 
-export { expire }
+  [Symbol.iterator]() {
+    return this;
+  }
+}
+
+function serverCron(table1, table2) {
+  const expDicIterator = new HashTableIterator(table1);
+  const mainDicIterator = new HashTableIterator(table2);
+  const entery1 = expDicIterator.next();
+  const entery2 = mainDicIterator.next();
+
+  if (!entery1) return;
+
+  const current_time = Date.now();
+  const expiredTime1 = entery1.value[1];
+  const expiredTime2 = entery2.value[1];
+
+  if (current_time >= entery1.value[1]) {
+    const key = entery.value[0];
+    const deletedValue1 = method.remove(key);
+    const deletedValue2 = method.remove(key);
+  }
+}
+
+function passiveExpiration(key, expDicTable, mainDicTable) {
+  const expDicValue = expDicTable.get(key);
+  if (!expDicValue) return;
+
+  const mainDicValue = mainDicTable.get(key);
+
+  const current_time = Date.now();
+
+  if (current_time >= expDicValue) {
+    const deletedValue1 = method.remove(key);
+    const deletedValue2 = method.remove(key);
+  }
+}
+
+export { expire, serverCron, expireDictionery, passiveExpiration };
