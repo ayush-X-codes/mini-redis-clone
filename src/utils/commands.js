@@ -97,17 +97,7 @@ export default class HashTable {
   };
 }
 
-const expireDictionery = new HashTable(10);
 
-function expire(key, timeInSec) {
-  if (!key || !timeInSec) return;
-
-  const currentTime = Date.now();
-  const durationMs = timeInSec * 1000;
-  const expireAt = currentTime + durationMs;
-
-  expireDictionery.set(key, expireAt);
-}
 
 class HashTableIterator {
   constructor(table) {
@@ -138,6 +128,19 @@ class HashTableIterator {
   }
 }
 
+const expireDictionery = new HashTable(10);
+
+function expire(key, timeInSec) {
+  if (!key || !timeInSec) return;
+
+  const currentTime = Date.now();
+  const durationMs = timeInSec * 1000;
+  const expireAt = currentTime + durationMs;
+
+  expireDictionery.set(key, expireAt);
+}
+
+
 function serverCron(table1, table2) {
   const expDicIterator = new HashTableIterator(table1);
   const mainDicIterator = new HashTableIterator(table2);
@@ -155,6 +158,11 @@ function serverCron(table1, table2) {
     const deletedValue1 = method.remove(key);
     const deletedValue2 = method.remove(key);
   }
+
+  const hz = 10;
+  const delay = 1000 / hz;
+
+  return delay
 }
 
 function passiveExpiration(key, expDicTable, mainDicTable) {
@@ -171,4 +179,20 @@ function passiveExpiration(key, expDicTable, mainDicTable) {
   }
 }
 
-export { expire, serverCron, expireDictionery, passiveExpiration };
+
+
+function ttl(key) {
+  const valueTime = expireDictionery.get(key);
+  if (!valueTime) {
+    return '-2';
+  }
+
+  const currnetTime = Date.now();
+  const timeLeft = valueTime - currnetTime;
+  const timeInSec = timeLeft / 1000;
+  console.log("time in sec is: ", timeInSec)
+
+  return timeInMs
+}
+
+export { expire, serverCron, expireDictionery, passiveExpiration, ttl };

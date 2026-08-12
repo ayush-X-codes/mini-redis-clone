@@ -3,6 +3,7 @@ import { bulkStringParser, parseArray } from "./utils/parser.js";
 import HashTable, {
   expireDictionery,
   passiveExpiration,
+  ttl,
 } from "./utils/commands.js";
 import { expire, serverCron } from "./utils/commands.js";
 import EventEmitter from "events";
@@ -28,7 +29,7 @@ const server = net.createServer((c) => {
     } catch (error) {
       console.error(
         "Failed to parse command, closing this connection",
-        error.message,
+        error,
       );
       c.end();
     }
@@ -64,7 +65,9 @@ const server = net.createServer((c) => {
         expire(keyExpire, valueStrToNum);
         break;
       case "TTL":
-        ttlCommand();
+         const ttlKey = command[1];
+         console.log("key is ttl command", ttlKey)
+        ttl(ttlKey);
         break;
     }
   }
@@ -78,12 +81,17 @@ const currentMonotonicTime = performance.now();
 
 const hz = 10;
 const delay = 1000 / hz;
-const scheduledTime = currentMonotonicTime + delay;
 
-// setInterval(() => {
-//   console.log("schdeuler runs...")
-//   serverCron(expireDictionery.buckets, method.buckets)
-// }, scheduledTime);
+function scheduleNext(delayMs) {
+  setTimeout(() => {
+    console.log("scheduler runs...");
+    const nextDelay = serverCron(expireDictionery.buckets, method.buckets);
+    scheduleNext(nextDelay)
+  }, delayMs);
+}
+
+
+scheduleNext(delay)
 
 server.on("error", (err) => {
   throw err;
